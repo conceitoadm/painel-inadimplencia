@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseClient'
-import { calcularValorTotal, BoletoData, BoletoRecord } from '@/lib/calc'
+import { BoletoData, BoletoRecord } from '@/lib/calc'
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,7 +13,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { searchParams } = new URL(request.url)
     const formData = await request.formData()
     const file = formData.get('file') as File
 
@@ -23,9 +22,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
-
-    // Converter arquivo para buffer
-    const buffer = Buffer.from(await file.arrayBuffer())
 
     // Processar Excel (simplificado - seria melhor usar uma biblioteca server-side)
     // Por ora, vamos assumir que os dados vêm no form data como JSON

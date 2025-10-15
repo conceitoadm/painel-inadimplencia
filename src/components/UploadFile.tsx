@@ -5,7 +5,6 @@ import { useDropzone } from 'react-dropzone'
 import * as XLSX from 'xlsx'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Upload, FileText, AlertCircle, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -68,14 +67,14 @@ export function UploadFile({ onDataParsed, onUpload }: UploadFileProps) {
       const worksheet = workbook.Sheets[sheetName]
 
       // Converter para JSON
-      const rawData: any[] = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+      const rawData: unknown[] = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
 
       if (rawData.length < 2) {
         throw new Error('Arquivo deve conter cabeçalho e pelo menos uma linha de dados')
       }
 
       // Encontrar índices das colunas obrigatórias
-      const headers = rawData[0] as string[]
+      const headers = (rawData[0] as unknown[]) as string[]
       const columnIndexes: Record<string, number> = {}
 
       REQUIRED_COLUMNS.forEach(col => {
@@ -97,21 +96,24 @@ export function UploadFile({ onDataParsed, onUpload }: UploadFileProps) {
       }
 
       // Converter dados para formato estruturado
-      const boletos: BoletoData[] = rawData.slice(1, 11).map((row: any) => ({
-        referencia: Number(row[columnIndexes['Referência']]) || 0,
-        condominio: String(row[columnIndexes['Condomínio']] || ''),
-        cnpj: String(row[columnIndexes['CNPJ']] || ''),
-        nome_pagador: String(row[columnIndexes['Nome do Pagador']] || ''),
-        unidade: String(row[columnIndexes['Unidade']] || ''),
-        doc: String(row[columnIndexes['Doc']] || ''),
-        complemento: String(row[columnIndexes['Complemento']] || ''),
-        vencimento: String(row[columnIndexes['Venc']] || ''),
-        vlr_original: Number(row[columnIndexes['Vlr Original']]) || 0,
-        multa: Number(row[columnIndexes['Multa']]) || undefined,
-        juros: Number(row[columnIndexes['Juros']]) || undefined,
-        vlr_total: Number(row[columnIndexes['Vlr Total']]) || 0,
-        status: String(row[columnIndexes['Status']] || '')
-      })).filter(boleto => boleto.doc && boleto.doc.trim())
+      const boletos: BoletoData[] = rawData.slice(1, 11).map((row) => {
+        const rowData = row as Record<string, unknown>
+        return {
+          referencia: Number(rowData[columnIndexes['Referência']]) || 0,
+          condominio: String(rowData[columnIndexes['Condomínio']] || ''),
+          cnpj: String(rowData[columnIndexes['CNPJ']] || ''),
+          nome_pagador: String(rowData[columnIndexes['Nome do Pagador']] || ''),
+          unidade: String(rowData[columnIndexes['Unidade']] || ''),
+          doc: String(rowData[columnIndexes['Doc']] || ''),
+          complemento: String(rowData[columnIndexes['Complemento']] || ''),
+          vencimento: String(rowData[columnIndexes['Venc']] || ''),
+          vlr_original: Number(rowData[columnIndexes['Vlr Original']]) || 0,
+          multa: Number(rowData[columnIndexes['Multa']]) || undefined,
+          juros: Number(rowData[columnIndexes['Juros']]) || undefined,
+          vlr_total: Number(rowData[columnIndexes['Vlr Total']]) || 0,
+          status: String(rowData[columnIndexes['Status']] || '')
+        }
+      }).filter(boleto => boleto.doc && boleto.doc.trim())
 
       if (boletos.length === 0) {
         throw new Error('Nenhum boleto válido encontrado no arquivo')

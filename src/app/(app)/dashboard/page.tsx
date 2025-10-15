@@ -17,11 +17,10 @@ import {
   Building2,
   Users,
   FileText,
-  Settings,
-  Plus
+  Settings
 } from 'lucide-react'
-import { formatCurrency, formatPercentage } from '@/lib/format'
 import { BoletoData } from '@/lib/calc'
+import type { User } from '@supabase/supabase-js'
 
 interface MetricasInadimplencia {
   totalUnidades: number
@@ -32,7 +31,7 @@ interface MetricasInadimplencia {
 }
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [metricas, setMetricas] = useState<MetricasInadimplencia | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [ultimaImportacao, setUltimaImportacao] = useState<string | null>(null)
@@ -41,6 +40,7 @@ export default function DashboardPage() {
   useEffect(() => {
     checkUser()
     loadMetrics()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const checkUser = async () => {
