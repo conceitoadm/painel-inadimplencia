@@ -10,10 +10,11 @@ import { toast } from 'sonner'
 import { LogIn, Mail, Lock } from 'lucide-react'
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [email, setEmail] = useState('admin@painel.com')
+  const [password, setPassword] = useState('admin123')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isCreatingUser, setIsCreatingUser] = useState(false)
   const router = useRouter()
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -28,23 +29,79 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
+      console.log('🔐 Tentando fazer login...')
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
       if (error) {
+        console.log('❌ Erro no login:', error.message)
+        
+        // Se usuário não existe, tentar criar
+        if (error.message.includes('Invalid login credentials') || error.message.includes('User not found')) {
+          console.log('👤 Usuário não existe, tentando criar...')
+          await handleCreateUser()
+          return
+        }
+        
         setError(error.message || 'Erro ao fazer login')
         return
       }
 
+      console.log('✅ Login realizado com sucesso!')
       toast.success('Login realizado com sucesso!')
       router.push('/dashboard')
     } catch (error) {
-      console.error('Erro no login:', error)
+      console.error('❌ Erro no login:', error)
       setError('Erro inesperado ao fazer login')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handleCreateUser = async () => {
+    setIsCreatingUser(true)
+    setError(null)
+
+    try {
+      console.log('👤 Criando usuário...')
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: undefined // Não redirecionar por email
+        }
+      })
+
+      if (error) {
+        console.error('❌ Erro ao criar usuário:', error)
+        setError(`Erro ao criar usuário: ${error.message}`)
+        return
+      }
+
+      if (data.user) {
+        console.log('✅ Usuário criado com sucesso!')
+        toast.success('Usuário criado! Fazendo login...')
+        
+        // Tentar login novamente
+        const { error: loginError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+
+        if (loginError) {
+          setError('Usuário criado, mas erro no login. Tente novamente.')
+          return
+        }
+
+        router.push('/dashboard')
+      }
+    } catch (error) {
+      console.error('❌ Erro ao criar usuário:', error)
+      setError('Erro inesperado ao criar usuário')
+    } finally {
+      setIsCreatingUser(false)
     }
   }
 
@@ -106,9 +163,14 @@ export default function LoginPage() {
             <Button
               type="submit"
               className="w-full"
-              disabled={isLoading}
+              disabled={isLoading || isCreatingUser}
             >
-              {isLoading ? (
+              {isCreatingUser ? (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  Criando usuário...
+                </div>
+              ) : isLoading ? (
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                   Entrando...
@@ -123,6 +185,12 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 text-center text-sm text-gray-600">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+              <p className="font-medium text-blue-800">Credenciais Padrão:</p>
+              <p className="text-blue-700">Email: admin@painel.com</p>
+              <p className="text-blue-700">Senha: admin123</p>
+              <p className="text-xs text-blue-600 mt-1">O sistema criará o usuário automaticamente</p>
+            </div>
             <p>Sistema de gestão condominial</p>
             <p className="font-medium">Conceito Administração de Condomínios</p>
           </div>
