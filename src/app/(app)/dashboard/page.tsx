@@ -68,17 +68,27 @@ export default function DashboardPage() {
 
   const loadMetrics = async () => {
     try {
+      console.log('📊 Carregando métricas...')
       const response = await fetch('/api/metrics')
+      
       if (response.ok) {
         const data = await response.json()
+        console.log('✅ Métricas carregadas:', data)
         setMetricas(data.metricas)
         setUltimaImportacao(data.ultimaImportacao)
+        
+        // Se não há dados, não é erro - é estado inicial
+        if (data.message && data.message.includes('Tabela ainda não foi criada')) {
+          console.log('📋 Sistema pronto para primeiro upload')
+        }
       } else {
-        console.error('Erro na API de métricas:', response.status)
+        console.error('❌ Erro na API de métricas:', response.status)
+        const errorData = await response.json().catch(() => ({}))
+        console.error('❌ Detalhes do erro:', errorData)
         setError('Erro ao carregar métricas')
       }
     } catch (error) {
-      console.error('Erro ao carregar métricas:', error)
+      console.error('❌ Erro ao carregar métricas:', error)
       setError('Erro ao carregar dados do dashboard')
     } finally {
       setIsLoading(false)

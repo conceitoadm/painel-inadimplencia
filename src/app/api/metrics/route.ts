@@ -5,18 +5,25 @@ import { formatDate } from '@/lib/format'
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('🔍 Iniciando API de métricas...')
+    
     // Verificar autenticação
     const { data: { session }, error: authError } = await supabase.auth.getSession()
 
     if (authError || !session) {
+      console.log('❌ Usuário não autenticado')
       return NextResponse.json(
         { error: 'Não autorizado' },
         { status: 401 }
       )
     }
 
+    console.log('✅ Usuário autenticado:', session.user.email)
+
     const { searchParams } = new URL(request.url)
     const referencias = searchParams.get('refs')?.split(',').filter(Boolean) || []
+
+    console.log('📊 Buscando dados da tabela boletos_inadimplentes...')
 
     // Construir query base
     let query = supabase
@@ -32,14 +39,34 @@ export async function GET(request: NextRequest) {
     const { data: boletos, error } = await query
 
     if (error) {
-      console.error('Erro ao buscar boletos:', error)
+      console.error('❌ Erro ao buscar boletos:', error)
+      
+      // Se a tabela não existe, retornar dados vazios
+      if (error.code === 'PGRST116' || error.message.includes('relation') || error.message.includes('does not exist')) {
+        console.log('📋 Tabela não existe ainda - retornando dados vazios')
+        return NextResponse.json({
+          metricas: {
+            totalUnidades: 0,
+            unidadesInadimplentes: 0,
+            percentualInadimplencia: 0,
+            valorTotalInadimplente: 0,
+            quantidadeBoletosAbertos: 0
+          },
+          ultimaImportacao: null,
+          message: 'Tabela ainda não foi criada. Faça o primeiro upload de dados.'
+        })
+      }
+      
       return NextResponse.json(
         { error: 'Erro interno do servidor' },
         { status: 500 }
       )
     }
 
+    console.log('📈 Dados encontrados:', boletos?.length || 0, 'registros')
+
     if (!boletos || boletos.length === 0) {
+      console.log('📭 Nenhum boleto encontrado - retornando dados vazios')
       return NextResponse.json({
         metricas: {
           totalUnidades: 0,
@@ -48,7 +75,8 @@ export async function GET(request: NextRequest) {
           valorTotalInadimplente: 0,
           quantidadeBoletosAbertos: 0
         },
-        ultimaImportacao: null
+        ultimaImportacao: null,
+        message: 'Nenhum dado encontrado. Faça o primeiro upload de dados.'
       })
     }
 
