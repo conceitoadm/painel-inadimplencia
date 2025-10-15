@@ -187,7 +187,10 @@ export default function DashboardPage() {
                   <Button
                     variant="outline"
                     className="h-20 flex-col gap-2"
-                    onClick={() => document.querySelector('[value="upload"]')?.click()}
+                    onClick={() => {
+                      const uploadTab = document.querySelector('[value="upload"]') as HTMLElement
+                      uploadTab?.click()
+                    }}
                   >
                     <Upload className="h-6 w-6" />
                     <span>Fazer Upload</span>
