@@ -13,17 +13,19 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (!email || !password) {
-      toast.error('Preencha todos os campos')
+      setError('Preencha todos os campos')
       return
     }
 
     setIsLoading(true)
+    setError(null)
 
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -32,15 +34,15 @@ export default function LoginPage() {
       })
 
       if (error) {
-        toast.error(error.message || 'Erro ao fazer login')
+        setError(error.message || 'Erro ao fazer login')
         return
       }
 
       toast.success('Login realizado com sucesso!')
       router.push('/dashboard')
     } catch (error) {
-      toast.error('Erro inesperado ao fazer login')
       console.error('Erro no login:', error)
+      setError('Erro inesperado ao fazer login')
     } finally {
       setIsLoading(false)
     }
@@ -94,6 +96,12 @@ export default function LoginPage() {
                 />
               </div>
             </div>
+
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                {error}
+              </div>
+            )}
 
             <Button
               type="submit"
