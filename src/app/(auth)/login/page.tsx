@@ -15,7 +15,23 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isCreatingUser, setIsCreatingUser] = useState(false)
+  const [envStatus, setEnvStatus] = useState<any>(null)
   const router = useRouter()
+
+  // Verificar status das variáveis de ambiente
+  React.useEffect(() => {
+    const checkEnv = async () => {
+      try {
+        const response = await fetch('/api/env-check')
+        const data = await response.json()
+        setEnvStatus(data.environment)
+        console.log('🔍 Status das variáveis:', data.environment)
+      } catch (error) {
+        console.error('❌ Erro ao verificar variáveis:', error)
+      }
+    }
+    checkEnv()
+  }, [])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -191,6 +207,30 @@ export default function LoginPage() {
               <p className="text-blue-700">Senha: admin123</p>
               <p className="text-xs text-blue-600 mt-1">O sistema criará o usuário automaticamente</p>
             </div>
+            
+            {envStatus && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4 text-left">
+                <p className="font-medium text-gray-800 mb-2">Status das Variáveis:</p>
+                <div className="space-y-1 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${envStatus.hasSupabaseUrl ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                    <span>NEXT_PUBLIC_SUPABASE_URL: {envStatus.hasSupabaseUrl ? '✅' : '❌'}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${envStatus.hasAnonKey ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                    <span>NEXT_PUBLIC_SUPABASE_ANON_KEY: {envStatus.hasAnonKey ? '✅' : '❌'}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${envStatus.hasServiceKey ? 'bg-green-500' : 'bg-yellow-500'}`}></span>
+                    <span>SUPABASE_SERVICE_ROLE_KEY: {envStatus.hasServiceKey ? '✅' : '⚠️'}</span>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-2">
+                    Ambiente: {envStatus.nodeEnv} | Vercel: {envStatus.vercelEnv}
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <p>Sistema de gestão condominial</p>
             <p className="font-medium">Conceito Administração de Condomínios</p>
           </div>
