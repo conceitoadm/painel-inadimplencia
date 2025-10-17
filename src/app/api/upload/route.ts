@@ -22,14 +22,41 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const body = await request.json().catch(() => null) as { data?: BoletoData[] } | null
+    const body = await request.json().catch(() => null) as {
+      data?: BoletoData[]
+      batchId?: string
+      totalParts?: number
+      part?: number
+      reset?: boolean
+      tipo?: 'reset' | 'incremental'
+    } | null
     const boletosData = body?.data
+    const batchId = body?.batchId
+    const isReset = body?.reset === true
+    const tipo = body?.tipo ?? (isReset ? 'reset' : 'incremental')
 
     if (!boletosData || boletosData.length === 0) {
       return NextResponse.json(
         { error: 'Nenhum dado válido enviado' },
         { status: 400 }
       )
+    }
+
+    // Se for a primeira parte de um reset, criar batch e desativar atuais
+    if (isReset && body?.part === 1) {
+      const { error: batchErr } = await supabaseAdmin
+        .from('import_batches')
+        .insert({ id: batchId, tipo, total_registros: boletosData.length })
+
+      if (batchErr) {
+        console.error('Erro ao criar batch:', batchErr)
+      }
+
+      // Desativar registros ativos anteriores (não apagar)
+      await supabaseAdmin
+        .from('boletos_inadimplentes')
+        .update({ ativo: false })
+        .eq('ativo', true)
     }
 
     // Processar boletos
@@ -73,7 +100,10 @@ export async function POST(request: NextRequest) {
             status: boletoRecord.status,
             data_importacao: hoje,
             quitado: false,
-            updated_at: new Date().toISOString()
+            updated_at: new Date().toISOString(),
+            batch_id: batchId ?? null,
+            imported_at: new Date().toISOString(),
+            ativo: true
           })
           .eq('doc', boletoData.doc)
 
@@ -87,7 +117,12 @@ export async function POST(request: NextRequest) {
         // Inserir novo boleto
         const { error } = await supabaseAdmin
           .from('boletos_inadimplentes')
-          .insert(boletoRecord)
+          .insert({
+            ...boletoRecord,
+            batch_id: batchId ?? null,
+            imported_at: new Date().toISOString(),
+            ativo: true,
+          })
 
         if (error) {
           console.error(`Erro ao inserir boleto ${boletoData.doc}:`, error)

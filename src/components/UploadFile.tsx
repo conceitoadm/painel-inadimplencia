@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Upload, FileText, AlertCircle, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
+import { supabase } from '@/lib/supabaseClient'
 
 interface BoletoData {
   referencia: number
@@ -50,6 +51,9 @@ export function UploadFile({ onDataParsed, onUpload }: UploadFileProps) {
   const [previewData, setPreviewData] = useState<BoletoData[]>([])
   const [fullData, setFullData] = useState<BoletoData[]>([])
   const [errors, setErrors] = useState<string[]>([])
+  const [batchSize, setBatchSize] = useState<number>(200)
+  const [isReset, setIsReset] = useState<boolean>(true)
+  const [progress, setProgress] = useState<{ sent: number; total: number }>({ sent: 0, total: 0 })
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0]
@@ -150,9 +154,65 @@ export function UploadFile({ onDataParsed, onUpload }: UploadFileProps) {
 
     try {
       setIsUploading(true)
-      await onUpload(fullData)
+
+      // Dividir em lotes
+      const chunks: BoletoData[][] = []
+      for (let i = 0; i < fullData.length; i += batchSize) {
+        chunks.push(fullData.slice(i, i + batchSize))
+      }
+
+      // Gerar batchId
+      const batchId = (globalThis.crypto && 'randomUUID' in globalThis.crypto)
+        ? (globalThis.crypto as Crypto).randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+
+      setProgress({ sent: 0, total: fullData.length })
+
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token || ''
+
+      let inseridos = 0
+      let atualizados = 0
+      let marcadosQuitados = 0
+
+      for (let idx = 0; idx < chunks.length; idx++) {
+        const part = idx + 1
+        const body = {
+          data: chunks[idx],
+          batchId,
+          totalParts: chunks.length,
+          part,
+          reset: isReset && part === 1,
+          tipo: isReset ? 'reset' : 'incremental',
+        }
+
+        const response = await fetch('/api/upload', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(body),
+        })
+
+        if (!response.ok) {
+          const detail = await response.json().catch(() => ({}))
+          throw new Error(`Erro no lote ${part}/${chunks.length}: ${response.status} ${detail?.error || ''}`)
+        }
+
+        const result = await response.json()
+        inseridos += result?.stats?.inseridos || 0
+        atualizados += result?.stats?.atualizados || 0
+        marcadosQuitados += result?.stats?.marcadosQuitados || 0
+
+        setProgress(prev => ({ sent: Math.min(prev.sent + chunks[idx].length, prev.total), total: prev.total }))
+      }
+
+      toast.success(`Importação concluída: ${inseridos} inseridos, ${atualizados} atualizados`)
+
       setPreviewData([])
       setFullData([])
+      setProgress({ sent: 0, total: 0 })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro ao fazer upload'
       toast.error(errorMessage)
@@ -173,6 +233,34 @@ export function UploadFile({ onDataParsed, onUpload }: UploadFileProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label className="text-sm font-medium">Tamanho do lote</label>
+            <select
+              className="w-full border rounded-md px-3 py-2 mt-1"
+              value={batchSize}
+              onChange={(e) => setBatchSize(Number(e.target.value))}
+              disabled={isUploading}
+            >
+              <option value={100}>100</option>
+              <option value={200}>200</option>
+              <option value={500}>500</option>
+            </select>
+          </div>
+          <div className="md:col-span-2">
+            <label className="text-sm font-medium">Modo de importação</label>
+            <div className="mt-2 flex items-center gap-3 text-sm">
+              <label className="inline-flex items-center gap-2">
+                <input type="radio" name="mode" checked={isReset} onChange={() => setIsReset(true)} disabled={isUploading} />
+                Reset (substitui base atual, preserva histórico)
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input type="radio" name="mode" checked={!isReset} onChange={() => setIsReset(false)} disabled={isUploading} />
+                Incremental (mantém base, marca quitados ausentes)
+              </label>
+            </div>
+          </div>
+        </div>
         <div
           {...getRootProps()}
           className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
@@ -261,6 +349,20 @@ export function UploadFile({ onDataParsed, onUpload }: UploadFileProps) {
                 Cancelar
               </Button>
             </div>
+
+            {isUploading && (
+              <div>
+                <div className="w-full bg-gray-200 rounded h-2">
+                  <div
+                    className="bg-blue-600 h-2 rounded"
+                    style={{ width: `${progress.total ? Math.round((progress.sent / progress.total) * 100) : 0}%` }}
+                  />
+                </div>
+                <div className="text-xs text-gray-600 mt-1">
+                  {progress.sent}/{progress.total} registros enviados
+                </div>
+              </div>
+            )}
           </div>
         )}
       </CardContent>

@@ -44,6 +44,39 @@ comment on table public.boletos_inadimplentes is
 'Controle de boletos em aberto e inadimplência condominial — acesso restrito a usuários autenticados via Supabase Auth.';
 
 
+-- 🧱 SQL – Políticas RLS para a tabela import_batches
+
+-- Ativar RLS
+alter table if exists public.import_batches enable row level security;
+
+-- Remover políticas antigas (se houver)
+drop policy if exists "Permitir leitura autenticados (batches)" on public.import_batches;
+drop policy if exists "Permitir escrita autenticados (batches)" on public.import_batches;
+drop policy if exists "Permitir atualização autenticados (batches)" on public.import_batches;
+
+-- Leitura para autenticados
+create policy "Permitir leitura autenticados (batches)"
+on public.import_batches
+for select
+to authenticated
+using (true);
+
+-- Inserção para autenticados
+create policy "Permitir escrita autenticados (batches)"
+on public.import_batches
+for insert
+to authenticated
+with check (true);
+
+-- Atualização para autenticados
+create policy "Permitir atualização autenticados (batches)"
+on public.import_batches
+for update
+to authenticated
+using (true)
+with check (true);
+
+
 
 
 
