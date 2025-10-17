@@ -19,3 +19,8 @@ export async function GET() {
     message: 'Verificação de variáveis de ambiente'
   })
 }
+
+
+
+
+

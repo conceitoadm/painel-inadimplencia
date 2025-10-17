@@ -24,3 +24,4 @@ export function formatNumber(value: number): string {
 export function formatDateForInput(date: string | Date): string {
   return new Date(date).toISOString().split('T')[0]
 }
+

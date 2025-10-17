@@ -112,3 +112,8 @@ export function calcularMetricasInadimplencia(boletos: BoletoRecord[]): Metricas
     quantidadeBoletosAbertos: boletosAbertos.length
   }
 }
+
+
+
+
+

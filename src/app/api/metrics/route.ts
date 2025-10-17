@@ -1,24 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabaseClient'
 import { calcularMetricasInadimplencia, BoletoRecord } from '@/lib/calc'
 import { formatDate } from '@/lib/format'
+import { createClient } from '@supabase/supabase-js'
 
 export async function GET(request: NextRequest) {
   try {
     console.log('🔍 Iniciando API de métricas...')
-    
-    // Verificar autenticação
-    const { data: { session }, error: authError } = await supabase.auth.getSession()
 
-    if (authError || !session) {
-      console.log('❌ Usuário não autenticado')
-      return NextResponse.json(
-        { error: 'Não autorizado' },
-        { status: 401 }
-      )
+    // Autenticação via header Authorization: Bearer <token>
+    const authHeader = request.headers.get('authorization') || ''
+    const token = authHeader.startsWith('Bearer ')
+      ? authHeader.replace('Bearer ', '')
+      : null
+
+    if (!token) {
+      console.log('❌ Token ausente')
+      return NextResponse.json({ error: 'Não autorizado' }, { status: 401 })
     }
 
-    console.log('✅ Usuário autenticado:', session.user.email)
+    // Criar client com contexto do usuário
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+      auth: { persistSession: false, autoRefreshToken: false }
+    })
 
     const { searchParams } = new URL(request.url)
     const referencias = searchParams.get('refs')?.split(',').filter(Boolean) || []

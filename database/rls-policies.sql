@@ -42,3 +42,8 @@ with check (true);
 -- Confirmar ativação
 comment on table public.boletos_inadimplentes is
 'Controle de boletos em aberto e inadimplência condominial — acesso restrito a usuários autenticados via Supabase Auth.';
+
+
+
+
+

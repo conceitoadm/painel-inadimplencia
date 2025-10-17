@@ -9,13 +9,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { toast } from 'sonner'
 import { LogIn, Mail, Lock } from 'lucide-react'
 
+type EnvStatus = {
+  hasSupabaseUrl: boolean
+  hasAnonKey: boolean
+  hasServiceKey: boolean
+  nodeEnv?: string
+  vercelEnv?: string
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState('admin@painel.com')
   const [password, setPassword] = useState('admin123')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isCreatingUser, setIsCreatingUser] = useState(false)
-  const [envStatus, setEnvStatus] = useState<any>(null)
+  const [envStatus, setEnvStatus] = useState<EnvStatus | null>(null)
   const router = useRouter()
 
   // Verificar status das variáveis de ambiente
@@ -24,7 +32,7 @@ export default function LoginPage() {
       try {
         const response = await fetch('/api/env-check')
         const data = await response.json()
-        setEnvStatus(data.environment)
+        setEnvStatus(data.environment as EnvStatus)
         console.log('🔍 Status das variáveis:', data.environment)
       } catch (error) {
         console.error('❌ Erro ao verificar variáveis:', error)
@@ -46,7 +54,7 @@ export default function LoginPage() {
 
     try {
       console.log('🔐 Tentando fazer login...')
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })

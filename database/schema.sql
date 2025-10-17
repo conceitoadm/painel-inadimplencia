@@ -58,3 +58,8 @@ comment on column public.boletos_inadimplentes.condominio is 'Razão social do c
 comment on column public.boletos_inadimplentes.doc is 'Identificador único do boleto (chave única)';
 comment on column public.boletos_inadimplentes.quitado is 'Indica se o boleto foi quitado (não aparece mais nas importações)';
 comment on column public.boletos_inadimplentes.data_importacao is 'Data da última importação do boleto';
+
+
+
+
+

@@ -13,19 +13,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const formData = await request.formData()
-    const file = formData.get('file') as File
-
-    if (!file) {
+    // Espera JSON no formato: { data: BoletoData[] }
+    const contentType = request.headers.get('content-type') || ''
+    if (!contentType.includes('application/json')) {
       return NextResponse.json(
-        { error: 'Nenhum arquivo enviado' },
-        { status: 400 }
+        { error: 'Content-Type inválido. Use application/json' },
+        { status: 415 }
       )
     }
 
-    // Processar Excel (simplificado - seria melhor usar uma biblioteca server-side)
-    // Por ora, vamos assumir que os dados vêm no form data como JSON
-    const boletosData = JSON.parse(formData.get('data') as string) as BoletoData[]
+    const body = await request.json().catch(() => null) as { data?: BoletoData[] } | null
+    const boletosData = body?.data
 
     if (!boletosData || boletosData.length === 0) {
       return NextResponse.json(

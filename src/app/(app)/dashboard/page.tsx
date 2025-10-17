@@ -69,7 +69,15 @@ export default function DashboardPage() {
   const loadMetrics = async () => {
     try {
       console.log('📊 Carregando métricas...')
-      const response = await fetch('/api/metrics')
+      const {
+        data: { session }
+      } = await supabase.auth.getSession()
+
+      const response = await fetch('/api/metrics', {
+        headers: {
+          Authorization: `Bearer ${session?.access_token ?? ''}`
+        }
+      })
       
       if (response.ok) {
         const data = await response.json()
