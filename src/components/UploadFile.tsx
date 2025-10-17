@@ -48,6 +48,7 @@ const REQUIRED_COLUMNS = [
 export function UploadFile({ onDataParsed, onUpload }: UploadFileProps) {
   const [isUploading, setIsUploading] = useState(false)
   const [previewData, setPreviewData] = useState<BoletoData[]>([])
+  const [fullData, setFullData] = useState<BoletoData[]>([])
   const [errors, setErrors] = useState<string[]>([])
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
@@ -95,8 +96,8 @@ export function UploadFile({ onDataParsed, onUpload }: UploadFileProps) {
         return
       }
 
-      // Converter dados para formato estruturado
-      const boletos: BoletoData[] = rawData.slice(1, 11).map((row) => {
+      // Converter dados para formato estruturado (todas as linhas)
+      const boletos: BoletoData[] = rawData.slice(1).map((row) => {
         const rowData = row as Record<string, unknown>
         return {
           referencia: Number(rowData[columnIndexes['Referência']]) || 0,
@@ -119,7 +120,9 @@ export function UploadFile({ onDataParsed, onUpload }: UploadFileProps) {
         throw new Error('Nenhum boleto válido encontrado no arquivo')
       }
 
-      setPreviewData(boletos)
+      // Guardar o dataset completo para envio e limitar a prévia para renderização
+      setFullData(boletos)
+      setPreviewData(boletos.slice(0, 100))
       onDataParsed(boletos)
 
       toast.success(`Arquivo processado com sucesso! ${boletos.length} boletos encontrados.`)
@@ -143,12 +146,13 @@ export function UploadFile({ onDataParsed, onUpload }: UploadFileProps) {
   })
 
   const handleUpload = async () => {
-    if (previewData.length === 0) return
+    if (fullData.length === 0) return
 
     try {
       setIsUploading(true)
-      await onUpload(previewData)
+      await onUpload(fullData)
       setPreviewData([])
+      setFullData([])
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Erro ao fazer upload'
       toast.error(errorMessage)
@@ -207,7 +211,7 @@ export function UploadFile({ onDataParsed, onUpload }: UploadFileProps) {
             <div className="flex items-center gap-2">
               <CheckCircle className="h-4 w-4 text-green-500" />
               <span className="text-sm font-medium">
-                Pré-visualização ({previewData.length} boletos)
+                Pré-visualização ({previewData.length} de {fullData.length} boletos)
               </span>
             </div>
 
@@ -247,7 +251,7 @@ export function UploadFile({ onDataParsed, onUpload }: UploadFileProps) {
                 disabled={isUploading}
                 className="flex-1"
               >
-                {isUploading ? 'Processando...' : `Importar ${previewData.length} Boletos`}
+                {isUploading ? 'Processando...' : `Importar ${fullData.length} Boletos`}
               </Button>
               <Button
                 variant="outline"
